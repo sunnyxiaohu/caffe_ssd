@@ -52,7 +52,7 @@ run_soon = True
 # The device id for webcam
 webcam_id = 0
 # The sampling rate for webcam
-sample_rate = 30
+sample_rate = 1
 
 # The parameters for the webcam demo
 
@@ -60,16 +60,16 @@ sample_rate = 30
 # If true, use batch norm for all newly added layers.
 # Currently only the non batch norm version has been tested.
 use_batchnorm = False
-num_classes = 21
+num_classes = 2
 share_location = True
 background_label_id=0
 conf_loss_type = P.MultiBoxLoss.SOFTMAX
 code_type = P.PriorBox.CENTER_SIZE
 # Stores LabelMapItem.
-label_map_file = "data/VOC0712/labelmap_voc.prototxt"
+label_map_file = "data/data-USA/labelmap_caltech.prototxt"
 # The resized image size
-resize_width = 200
-resize_height = 200
+resize_width = 290
+resize_height = 290
 
 # Parameters needed for test.
 # Set the number of test iterations to the maximum integer number.
@@ -129,14 +129,14 @@ det_out_param = {
 # The job name should be same as the name used in examples/ssd/ssd_pascal.py.
 job_name = "SSD_{}".format(resize)
 # The name of the model. Modify it if you want.
-model_name = "VGG_VOC0712_{}".format(job_name)
+model_name = "VGG_data-USA_{}".format(job_name)
 
 # Directory which stores the model .prototxt file.
-save_dir = "models/VGGNet/VOC0712/{}_webcam".format(job_name)
+save_dir = "models/VGGNet/data-USA/{}_webcam".format(job_name)
 # Directory which stores the snapshot of trained models.
-snapshot_dir = "models/VGGNet/VOC0712/{}".format(job_name)
+snapshot_dir = "models/VGGNet/data-USA/{}".format(job_name)
 # Directory which stores the job script and log file.
-job_dir = "jobs/VGGNet/VOC0712/{}_webcam".format(job_name)
+job_dir = "jobs/VGGNet/data-USA/{}_webcam".format(job_name)
 
 # model definition files.
 test_net_file = "{}/test.prototxt".format(save_dir)
@@ -163,7 +163,7 @@ pretrain_model = "{}_iter_{}.caffemodel".format(snapshot_prefix, max_iter)
 
 # parameters for generating priors.
 # minimum dimension of input image
-min_dim = 200
+min_dim = 290
 # conv4_3 ==> 38 x 38
 # fc7 ==> 19 x 19
 # conv6_2 ==> 10 x 10
@@ -182,6 +182,7 @@ for ratio in xrange(min_ratio, max_ratio + 1, step):
   max_sizes.append(min_dim * (ratio + step) / 100.)
 min_sizes = [min_dim * 10 / 100.] + min_sizes
 max_sizes = [[]] + max_sizes
+# aspect_ratios = w/h.
 aspect_ratios = [[2], [2, 3], [2, 3], [2, 3], [2, 3], [2, 3]]
 # L2 normalize conv4_3.
 normalizations = [20, -1, -1, -1, -1, -1]

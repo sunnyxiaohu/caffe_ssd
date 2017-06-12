@@ -49,12 +49,11 @@ caffe_root = os.getcwd()
 
 # Set true if you want to start training right after generating all files.
 run_soon = True
-# The device id for webcam
-webcam_id = 0
-# The sampling rate for webcam
-sample_rate = 30
+# The video file path
+# video_file = "examples/videos/ILSVRC2015_train_00755001.mp4"
+video_file = "examples/videos/video_validation_0000096.mp4"
 
-# The parameters for the webcam demo
+# The parameters for the video demo
 
 # Key parameters used in training
 # If true, use batch norm for all newly added layers.
@@ -68,28 +67,34 @@ code_type = P.PriorBox.CENTER_SIZE
 # Stores LabelMapItem.
 label_map_file = "data/VOC0712/labelmap_voc.prototxt"
 # The resized image size
-resize_width = 200
-resize_height = 200
+resize_width = 290
+resize_height = 290
 
 # Parameters needed for test.
 # Set the number of test iterations to the maximum integer number.
 test_iter = int(math.pow(2, 29) - 1)
 # Use GPU or CPU
-solver_mode = P.Solver.CPU
+solver_mode = P.Solver.GPU
 # Defining which GPUs to use.
 gpus = "0"
 # Number of frames to be processed per batch.
 test_batch_size = 1
 # Only display high quality detections whose scores are higher than a threshold.
-visualize_threshold = 0.6
-# Size of webcam image.
-webcam_width = 640
-webcam_height = 480
+visualize_threshold = 0.3
+# Size of video image.
+# 1280
+video_width = 1280
+# 720
+video_height = 720
 # Scale the image size for display.
-scale = 1
+scale = 0.5
 
 ### Hopefully you don't need to change the following ###
 resize = "{}x{}".format(resize_width, resize_height)
+video_data_param = {
+        'video_type': P.VideoData.VIDEO,
+        'video_file': video_file,
+        }
 test_transform_param = {
         'mean_value': [104, 117, 123],
         'resize_param': {
@@ -105,8 +110,8 @@ output_transform_param = {
         'resize_param': {
                 'prob': 1,
                 'resize_mode': P.Resize.WARP,
-                'height': int(webcam_height * scale),
-                'width': int(webcam_width * scale),
+                'height': int(video_height * scale),
+                'width': int(video_width * scale),
                 'interp_mode': [P.Resize.LINEAR],
                 },
         }
@@ -132,11 +137,11 @@ job_name = "SSD_{}".format(resize)
 model_name = "VGG_VOC0712_{}".format(job_name)
 
 # Directory which stores the model .prototxt file.
-save_dir = "models/VGGNet/VOC0712/{}_webcam".format(job_name)
+save_dir = "models/VGGNet/VOC0712/{}_video".format(job_name)
 # Directory which stores the snapshot of trained models.
 snapshot_dir = "models/VGGNet/VOC0712/{}".format(job_name)
 # Directory which stores the job script and log file.
-job_dir = "jobs/VGGNet/VOC0712/{}_webcam".format(job_name)
+job_dir = "jobs/VGGNet/VOC0712/{}_video".format(job_name)
 
 # model definition files.
 test_net_file = "{}/test.prototxt".format(save_dir)
@@ -163,7 +168,7 @@ pretrain_model = "{}_iter_{}.caffemodel".format(snapshot_prefix, max_iter)
 
 # parameters for generating priors.
 # minimum dimension of input image
-min_dim = 200
+min_dim = 290
 # conv4_3 ==> 38 x 38
 # fc7 ==> 19 x 19
 # conv6_2 ==> 10 x 10
@@ -202,8 +207,7 @@ make_if_not_exist(snapshot_dir)
 
 # Create test net.
 net = caffe.NetSpec()
-net.data = L.VideoData(
-        video_data_param=dict(video_type=P.VideoData.WEBCAM, device_id=webcam_id, sampling_rate=sample_rate),
+net.data = L.VideoData(video_data_param=video_data_param,
         data_param=dict(batch_size=test_batch_size),
         transform_param=test_transform_param)
 

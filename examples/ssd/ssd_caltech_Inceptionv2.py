@@ -55,10 +55,10 @@ resume_training = False
 # If true, Remove old model files.
 remove_old_models = False
 
-# The database file for training data. Created by data/VOC0712/create_data.sh
-train_data = "examples/VOC0712/VOC0712_trainval_lmdb"
-# The database file for testing data. Created by data/VOC0712/create_data.sh
-test_data = "examples/VOC0712/VOC0712_test_lmdb"
+# The database file for training data. Created by data/data-USA/create_data.sh
+train_data = "examples/data-USA/data-USA_trainval3_lmdb"
+# The database file for testing data. Created by data/data-USA/create_data.sh
+test_data = "examples/data-USA/data-USA_test_lmdb"
 # Specify the batch sampler.
 resize_width = 290
 resize_height = 290
@@ -193,16 +193,16 @@ else:
 # Modify the job name if you want.
 job_name = "SSD_{}".format(resize)
 # The name of the model. Modify it if you want.
-model_name = "VGG_VOC0712_{}".format(job_name)
+model_name = "Inceptionv2_data-USA_{}".format(job_name)
 
 # Directory which stores the model .prototxt file.
-save_dir = "models/VGGNet/VOC0712/{}".format(job_name)
+save_dir = "models/Inceptionv2Net/data-USA/{}".format(job_name)
 # Directory which stores the snapshot of models.
-snapshot_dir = "models/VGGNet/VOC0712/{}".format(job_name)
+snapshot_dir = "models/Inceptionv2Net/data-USA/{}".format(job_name)
 # Directory which stores the job script and log file.
-job_dir = "jobs/VGGNet/VOC0712/{}".format(job_name)
+job_dir = "jobs/Inceptionv2Net/data-USA/{}".format(job_name)
 # Directory which stores the detection results.
-output_result_dir = "{}/data/VOCdevkit/results/VOC2007/{}/Main".format(os.environ['HOME'], job_name)
+output_result_dir = "results/data-USA/{}/Main".format(job_name)
 
 # model definition files.
 train_net_file = "{}/train.prototxt".format(save_dir)
@@ -215,14 +215,14 @@ snapshot_prefix = "{}/{}".format(snapshot_dir, model_name)
 job_file = "{}/{}.sh".format(job_dir, model_name)
 
 # Stores the test image names and sizes. Created by data/VOC0712/create_list.sh
-name_size_file = "data/VOC0712/test_name_size.txt"
-# The pretrained model. We use the Fully convolutional reduced (atrous) VGGNet.
-pretrain_model = "models/VGGNet/VGG_ILSVRC_16_layers_fc_reduced.caffemodel"
+name_size_file = "data/data-USA/test_name_size.txt"
+# The pretrained model. We use the Fully convolutional reduced (atrous) Inceptionv2Net.
+pretrain_model = "models/Inceptionv2Net/Inception21k.caffemodel"
 # Stores LabelMapItem.
-label_map_file = "data/VOC0712/labelmap_voc.prototxt"
+label_map_file = "data/data-USA/labelmap_caltech.prototxt"
 
 # MultiBoxLoss parameters.
-num_classes = 21
+num_classes = 2
 share_location = True
 background_label_id=0
 train_on_diff_gt = True
@@ -271,7 +271,7 @@ for ratio in xrange(min_ratio, max_ratio + 1, step):
   max_sizes.append(min_dim * (ratio + step) / 100.)
 min_sizes = [min_dim * 10 / 100.] + min_sizes
 max_sizes = [[]] + max_sizes
-aspect_ratios = [[2], [2, 3], [2, 3], [2, 3], [2, 3], [2, 3]]
+aspect_ratios = [[1./2, 1./3], [1./2, 1./3], [1./2, 1./3], [1./2, 1./3], [1./2, 1./3], [1./2, 1./3]]
 # L2 normalize conv4_3.
 normalizations = [20, -1, -1, -1, -1, -1]
 # variance used to encode/decode prior bboxes.
@@ -279,7 +279,7 @@ if code_type == P.PriorBox.CENTER_SIZE:
   prior_variance = [0.1, 0.1, 0.2, 0.2]
 else:
   prior_variance = [0.1]
-flip = True
+flip = False
 clip = True
 
 # Solver parameters.
@@ -314,7 +314,7 @@ elif normalization_mode == P.Loss.FULL:
 freeze_layers = ['conv1_1', 'conv1_2', 'conv2_1', 'conv2_2']
 
 # Evaluate on whole test set.
-num_test_image = 4952
+num_test_image = 719
 test_batch_size = 1
 test_iter = num_test_image / test_batch_size
 
@@ -387,11 +387,29 @@ net = caffe.NetSpec()
 net.data, net.label = CreateAnnotatedDataLayer(train_data, batch_size=batch_size_per_device,
         train=True, output_label=True, label_map_file=label_map_file,
         transform_param=train_transform_param, batch_sampler=batch_sampler)
+net_header = net.to_proto()
 
-VGGNetBody(net, from_layer='data', fully_conv=True, reduced=True, dilated=True,
-    dropout=False, freeze_layers=freeze_layers)
+deployName = "models/Inceptionv2Net/Inception21k_deploy.prototxt"
+net_body = caffe_pb2.NetParameter()
+with open(deployName, 'rb') as f:
+    text_format.Merge(f.read(), net_body)
+    # todo: get layer by name
+    del net_body.layer[0]
+    del net_body.layer[-3]
+    del net_body.layer[-2]
+    del net_body.layer[-1]
+    # del net_body.layer[-4]
+    net_body.name = "{}_train".format(model_name)
+net_header.MergeFrom(net_body)
 
+net = caffe.NetSpec()
 AddExtraLayers(net, use_batchnorm)
+#VGGNetBody(net, from_layer='data', fully_conv=True, reduced=True, dilated=True,
+#    dropout=False, freeze_layers=freeze_layers)
+with open(train_net_file, 'w') as f:
+    print(str(net_header), file=f)
+
+'''
 
 mbox_layers = CreateMultiBoxHead(net, data_layer='data', from_layers=mbox_source_layers,
         use_batchnorm=use_batchnorm, min_sizes=min_sizes, max_sizes=max_sizes,
@@ -527,3 +545,4 @@ shutil.copy(py_file, job_dir)
 os.chmod(job_file, stat.S_IRWXU)
 if run_soon:
   subprocess.call(job_file, shell=True)
+'''

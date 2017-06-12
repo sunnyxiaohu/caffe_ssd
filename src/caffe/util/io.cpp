@@ -455,6 +455,97 @@ bool ReadJSONToAnnotatedDatum(const string& labelfile, const int img_height,
   return true;
 }
 
+// Parse plain txt detection annotation: label_id, xmin, ymin, xmax, ymax.
+bool ReadTxtToAnnotatedDatum(const string& labelfile, const int height,
+    const int width, AnnotatedDatum* anno_datum) {
+
+  std::ifstream infile(labelfile.c_str());
+  if (!infile.good()) {
+    LOG(INFO) << "Cannot open " << labelfile;
+    return false;
+  }
+
+  int label;float xmin, ymin, xmax, ymax;
+// the annotation formate type of caltech
+/*
+% bbGt version=3
+people 515 149 68 50 0 0 0 0 0 0 0
+person 477 163 15 40 0 0 0 0 0 0 0
+*/
+
+// LOG(INFO)<<labelfile<<": ";
+  string header;
+  getline(infile, header);
+// LOG(INFO) << "HEADER: "<<header;
+
+  string label_name; float x, y, w, h, t, x_v, y_v, w_v, h_v, t_v, tmp;
+  
+  while (infile >> label_name >> x >> y >> w >> h >> t >> x_v >> y_v >> w_v >> h_v >> t_v >>tmp) {
+    if ("person"==label_name)
+       label = 1;
+    else
+       continue;
+//    label = label_name=="person" ? 1 : 0; //just identify people as negative.
+    xmin = x; ymin = y; xmax = x+w-1; ymax = y+h-1;
+    // LOG(INFO)<<label<<" ("<<xmin<<" "<<ymin<<" "<<xmax<<" "<<ymax<<")";
+    Annotation* anno = NULL;
+    int instance_id = 0;
+    bool found_group = false;
+    for (int g = 0; g < anno_datum->annotation_group_size(); ++g) {
+      AnnotationGroup* anno_group = anno_datum->mutable_annotation_group(g);
+      if (label == anno_group->group_label()) {
+        if (anno_group->annotation_size() == 0) {
+          instance_id = 0;
+        } else {
+          instance_id = anno_group->annotation(
+              anno_group->annotation_size() - 1).instance_id() + 1;
+        }
+        anno = anno_group->add_annotation();
+        found_group = true;
+      }
+    }
+    if (!found_group) {
+      // LOG(INFO)<<labelfile<<": "<<label<<" ("<<xmin<<" "<<ymin<<" "<<xmax<<" "<<ymax<<")";
+      // If there is no such annotation_group, create a new one.
+      AnnotationGroup* anno_group = anno_datum->add_annotation_group();
+      anno_group->set_group_label(label);
+      anno = anno_group->add_annotation();
+      instance_id = 0;
+    }
+    anno->set_instance_id(instance_id++);
+    LOG_IF(WARNING, xmin > width) << labelfile <<
+      " bounding box exceeds image boundary. xmin > width";
+    LOG_IF(WARNING, ymin > height) << labelfile <<
+      " bounding box exceeds image boundary. ymin > height";
+    LOG_IF(WARNING, xmax > width) << labelfile <<
+      " bounding box exceeds image boundary. xmax > width";
+    LOG_IF(WARNING, ymax > height) << labelfile <<
+      " bounding box exceeds image boundary. ymax > height";
+    LOG_IF(WARNING, xmin < 0) << labelfile <<
+      " bounding box exceeds image boundary. xmin < 0";
+    LOG_IF(WARNING, ymin < 0) << labelfile <<
+      " bounding box exceeds image boundary. ymin < 0";
+    LOG_IF(WARNING, xmax < 0) << labelfile <<
+      " bounding box exceeds image boundary. xmax < 0";
+    LOG_IF(WARNING, ymax < 0) << labelfile <<
+      " bounding box exceeds image boundary. ymax < 0";
+    LOG_IF(WARNING, xmin > xmax) << labelfile <<
+      " bounding box irregular. xmin > xmax";
+    LOG_IF(WARNING, ymin > ymax) << labelfile <<
+      " bounding box irregular. ymin > ymax";
+    // Store the normalized bounding box.
+    NormalizedBBox* bbox = anno->mutable_bbox();
+    bbox->set_xmin(xmin / width);
+    bbox->set_ymin(ymin / height);
+    bbox->set_xmax(xmax / width);
+    bbox->set_ymax(ymax / height);
+    bbox->set_difficult(false);
+  }
+
+  infile.close();
+  return true;
+}
+
 bool ReadLabelFileToLabelMap(const string& filename, bool include_background,
     const string& delimiter, LabelMap* map) {
   // cleanup

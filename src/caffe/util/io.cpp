@@ -236,7 +236,10 @@ bool ReadRichImageToAnnotatedDatum(const string& filename,
       } else if (labeltype == "json") {
         return ReadJSONToAnnotatedDatum(labelfile, ori_height, ori_width,
                                         name_to_label, anno_datum);
-      } else {
+      } else if (labeltype == "txt") {
+        return ReadTxtToAnnotatedDatum(labelfile, ori_height, ori_width, 
+                                        anno_datum);
+　　　　　　} else {
         LOG(FATAL) << "Unknown label file type.";
         return false;
       }
